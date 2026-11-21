@@ -1,6 +1,6 @@
 # Fieldlight
 
-A standalone, local bird photography planner. Explore nearby eBird hotspots with or without a target bird, and compare hourly weather with solar direction and timing. The portfolio website is not part of this project.
+A standalone, local bird photography planner. Explore nearby eBird hotspots with or without a target bird, and compare hourly weather with solar direction and timing.
 
 ## Run on Windows
 
