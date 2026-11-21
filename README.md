@@ -16,7 +16,7 @@ Open the localhost URL printed by the server (normally http://127.0.0.1:3210). I
 
 For Git Bash or another Bash shell, run `bash launch.sh` from this folder, or pass its full path from any directory. The script changes to the project directory before loading the local environment and starting Node.
 
-The supplied eBird key is already in the local `.env`, which is excluded from Git and never served to the browser. Since the original key was disclosed in chat, rotate it at https://ebird.org/api/keygen and edit `.env` locally with its replacement. Do not paste replacement credentials into chat or commit them. Restart the server after changing the key. For a fresh installation, create `.env` from `.env.example` and fill in `EBIRD_API_KEY`. With no valid key, map-point weather and light still work.
+For a fresh installation, create `.env` from `.env.example` and fill in `EBIRD_API_KEY`. With no valid key, map-point weather and light still work.
 
 Open this folder directly in VS Code for the standalone workspace. A `Run Fieldlight` task is provided; it runs `npm start` without a debugger. No extensions or build step are required.
 
