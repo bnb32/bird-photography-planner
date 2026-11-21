@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fieldlight | Bird Photography Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/vendor/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="importmap">
+    { "imports": { "suncalc": "/vendor/suncalc.js", "@js-temporal/polyfill": "/vendor/temporal.js", "jsbi": "/vendor/jsbi.js" } }
+  </script>
+  <script defer src="/vendor/leaflet.js"></script>
+  <script defer src="/vendor/lucide.js"></script>
+  <script defer src="/vendor/tz-lookup.js"></script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="identity"><i data-lucide="bird" aria-hidden="true"></i><h1>Fieldlight</h1><span class="subtitle">Bird photography planner</span></div>
+    <div class="header-actions"><span id="connection" class="connection">Connecting</span><button id="saved-toggle" class="icon-button" title="Saved places" aria-label="Saved places" aria-expanded="false"><i data-lucide="bookmark"></i></button></div>
+  </header>
+  <section class="searchbar" aria-label="Outing search">
+    <form id="bird-form" class="bird-search">
+      <label for="bird">Target bird (optional)</label>
+      <div class="input-icon"><i data-lucide="search" aria-hidden="true"></i><input id="bird" list="bird-options" placeholder="Any species" autocomplete="off"><datalist id="bird-options"></datalist><button id="clear-bird" type="button" class="icon-button" title="Clear target bird" aria-label="Clear target bird"><i data-lucide="x"></i></button></div>
+    </form>
+    <form id="place-form" class="place-search">
+      <label for="place">Near</label>
+      <div class="input-action"><input id="place" placeholder="Town or city" autocomplete="off"><button class="icon-button" title="Find place" aria-label="Find place"><i data-lucide="map-pin"></i></button></div>
+      <div id="place-results" class="place-results" hidden></div>
+    </form>
+    <div class="radius-field"><label for="radius">Radius</label><div class="unit-input"><input id="radius" type="number" min="1" max="250" step="1" value="25"><span>km</span></div></div>
+    <div class="lookback-field"><label for="lookback">Reports from</label><select id="lookback"><option value="3">Last 3 days</option><option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option><option value="30">Last 30 days</option></select></div>
+    <button id="search" class="primary"><i data-lucide="search" aria-hidden="true"></i>Search this area</button>
+  </section>
+  <div id="global-message" class="global-message" role="status" hidden></div>
+  <main class="workspace">
+    <aside class="locations" aria-label="Candidate locations">
+      <div class="section-heading"><h2>Locations <span id="result-count" class="count">0</span></h2><select id="sort" aria-label="Sort locations"><option value="activity">Recently active</option><option value="recent">Target recency</option><option value="distance">Nearest</option></select></div>
+      <div id="search-summary" class="search-summary">No search yet</div>
+      <div class="hotspot-search"><label for="hotspot-query">Hotspot name (US / Canada)</label><div class="input-action"><input id="hotspot-query" type="search" maxlength="100" placeholder="Search hotspot names" autocomplete="off"><button id="clear-hotspot-query" type="button" class="icon-button" title="Clear hotspot search" aria-label="Clear hotspot search"><i data-lucide="x"></i></button></div><div id="hotspot-match-status" class="muted" role="status" hidden></div><div id="hotspot-name-results" class="hotspot-name-results"></div></div>
+      <div id="results-message" class="empty-message" role="status">Loading species list...</div>
+      <div id="results" class="result-list"></div>
+      <section id="saved-panel" hidden><div class="section-heading"><h2>Saved places</h2></div><div id="saved-list"></div></section>
+      <p class="data-note">Recent reports, not encounter probabilities. No report does not mean a bird is absent.</p>
+    </aside>
+    <section class="map-column" aria-label="Location map and timeline">
+      <div class="map-tools"><span id="center-label">Seattle area</span><div><label class="checkbox-label"><input id="show-hotspots" type="checkbox">Other hotspots</label><button id="locate" class="icon-button" title="Use my location" aria-label="Use my location"><i data-lucide="locate-fixed"></i></button></div></div>
+      <div id="map" aria-label="Interactive location map"></div>
+      <div class="map-legend"><span><b class="dot target"></b><span id="result-legend">Hotspots</span></span><span><b class="dot" style="border: 2px solid #24332e; background: white;"></b>Search center</span><span><b class="dot selected"></b>Selected point</span><span><b class="line sun"></b>Sun now</span><span><b class="line rise"></b>Sunrise</span><span><b class="line set"></b>Sunset</span></div>
+      <section class="timeline" aria-label="Hourly conditions">
+        <div class="timeline-header"><div><label for="date">Outing date</label><select id="date" disabled></select></div><div class="time-heading"><strong id="selected-time">--</strong><span id="timezone">--</span></div><div class="golden-buttons"><button id="morning" class="icon-button" title="Morning golden hour" aria-label="Morning golden hour"><i data-lucide="sunrise"></i></button><button id="evening" class="icon-button" title="Evening golden hour" aria-label="Evening golden hour"><i data-lucide="sunset"></i></button></div></div>
+        <input id="time" type="range" min="0" max="23" step="1" value="8" aria-label="Selected hour" disabled>
+        <div id="hours" class="hour-strip"></div>
+        <div class="timeline-foot"><span id="forecast-status" role="status">Select a location</span><button id="refresh" class="icon-button" title="Refresh weather" aria-label="Refresh weather" disabled><i data-lucide="refresh-cw"></i></button></div>
+      </section>
+    </section>
+    <aside class="conditions" aria-label="Selected place conditions">
+      <div class="section-heading"><h2>At this location</h2><button id="save" class="icon-button" title="Save place" aria-label="Save place" disabled><i data-lucide="bookmark"></i></button></div>
+      <h3 id="location-name">Choose a location</h3><p id="location-meta" class="muted">--</p><p id="location-report" class="report-detail"></p>
+      <div class="source-links"><a id="ebird-link" hidden target="_blank" rel="noopener noreferrer">eBird <i data-lucide="external-link"></i></a><a id="map-link" hidden target="_blank" rel="noopener noreferrer">Map &amp; access <i data-lucide="external-link"></i></a></div>
+      <section class="sun-section"><div class="section-heading"><h2>Light</h2><span id="light-state" class="badge">--</span></div><div class="sun-readout"><div><span id="azimuth">--</span><label>Sun bearing</label></div><div><span id="elevation">--</span><label>Elevation</label></div></div><dl class="sun-times"><div><dt>Dawn</dt><dd id="dawn">--</dd></div><div><dt>Sunrise</dt><dd id="sunrise">--</dd></div><div class="golden"><dt>Morning golden</dt><dd id="golden-am">--</dd></div><div class="golden"><dt>Evening golden</dt><dd id="golden-pm">--</dd></div><div><dt>Sunset</dt><dd id="sunset">--</dd></div><div><dt>Dusk</dt><dd id="dusk">--</dd></div></dl><p class="data-note">Geometric light times; terrain and obstructions are not included.</p></section>
+      <section class="weather-section"><div class="section-heading"><h2>Weather</h2><select id="units" aria-label="Weather units"><option value="imperial">°F / mph</option><option value="metric">°C / km/h</option></select></div><div class="weather-grid"><div><i data-lucide="thermometer"></i><strong id="temperature">--</strong><span>Temperature</span></div><div><i data-lucide="cloud"></i><strong id="cloud">--</strong><span>Cloud cover</span></div><div><i data-lucide="cloud-rain"></i><strong id="rain">--</strong><span>Rain chance</span></div><div><i data-lucide="wind"></i><strong id="wind">--</strong><span>Wind</span></div><div><i data-lucide="navigation"></i><strong id="gusts">--</strong><span>Gusts</span></div><div><i data-lucide="eye"></i><strong id="visibility">--</strong><span>Visibility</span></div></div><p id="weather-detail" class="muted"></p></section>
+      <section class="notes-section"><label for="notes">Access notes</label><textarea id="notes" rows="2" placeholder="Hours, permits, trail access..." disabled></textarea><p class="data-note">Hotspots do not guarantee public access. Check site rules and avoid disturbing birds.</p></section>
+      <section class="other-birds"><h2>Recent species <span class="muted">14 days</span></h2><div id="other-species" class="muted">--</div></section>
+    </aside>
+  </main>
+  <footer><span>Fieldlight <span class="footer-separator">/</span> Local workspace</span><span>Data: <a href="https://ebird.org" target="_blank" rel="noopener noreferrer">eBird</a> · <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · <a href="https://github.com/mourner/suncalc" target="_blank" rel="noopener noreferrer">SunCalc</a></span></footer>
+</body>
+</html>

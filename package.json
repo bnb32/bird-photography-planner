@@ -1,0 +1,19 @@
+{
+  "name": "bird-photography-planner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.11" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node --env-file-if-exists=.env test/live-smoke.mjs"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "lucide": "0.468.0",
+    "suncalc": "2.1.4",
+    "tz-lookup": "6.1.25",
+    "@js-temporal/polyfill": "0.5.1"
+  }
+}
