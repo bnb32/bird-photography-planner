@@ -9,7 +9,7 @@ test('selection and solar overlays cannot intercept the second click', () => {
   const point = { lat: 47.68, lng: -122.25, locName: 'Test point' };
   const layer = () => ({
     addTo() { return this; }, bindTooltip() { return this; }, on() { return this; },
-    clearLayers() {}, eachLayer() {}, setLatLng() {}, setRadius() {}, bringToFront() {}
+    clearLayers() {}, eachLayer() {}, setLatLng() { return this; }, setRadius() { return this; }, bringToFront() {}
   });
   const bounds = {
     contains: () => true,
@@ -26,7 +26,7 @@ test('selection and solar overlays cannot intercept the second click', () => {
     circleMarker(position, options) { markers.push(options); return layer(); },
     polyline(position, options) { rays.push(options); return layer(); }
   };
-  globalThis.document = { getElementById: () => ({}) };
+  globalThis.document = { getElementById: () => ({}), createElement: () => ({}) };
   globalThis.ResizeObserver = class { observe() {} };
   try {
     let searched;
@@ -39,6 +39,17 @@ test('selection and solar overlays cannot intercept the second click', () => {
     handlers.dblclick({ latlng: point });
     assert.equal(searched.lat, point.lat);
     assert.equal(searched.lng, point.lng);
+    const today = new Date().toISOString().slice(0, 10);
+    const fresh = { ...point, latestObsDt: today };
+    const old = { ...point, latestObsDt: '2000-01-01' };
+    const before = markers.length;
+    map.results({
+      results: [{ ...fresh, locId: 'L1' }, { ...old, locId: 'L2' }],
+      hotspots: [{ ...fresh, locId: 'L3' }, { ...old, locId: 'L4' }, { ...point, locId: 'L5' }]
+    }, point, 25);
+    assert.equal(markers.length - before, 2);
+    assert.equal(markers.at(-2).radius, 4);
+    assert.equal(markers.at(-1).radius, 6);
   } finally {
     Object.assign(globalThis, original);
   }

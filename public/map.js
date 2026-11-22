@@ -1,4 +1,5 @@
 import { bearingEnd, sunPosition } from './light.js';
+import { hasRecentActivity } from './locations.js';
 
 export function createMap(center, onSelect, onMove, onSearch) {
   const map = L.map('map', { doubleClickZoom: false }).setView([center.lat, center.lng], 11);
@@ -43,11 +44,14 @@ export function createMap(center, onSelect, onMove, onSearch) {
       searchArea.setLatLng([center.lat, center.lng]).setRadius(radius * 1000);
       if (radius > 50) map.fitBounds(searchArea.getBounds(), { padding: [20, 20] });
       const targetIds = new Set(data.results.map(place => place.locId));
+      const now = Date.now();
+      const recent = place => hasRecentActivity(place, now, globalThis.window?.tzlookup?.(place.lat, place.lng) || 'UTC');
       for (const place of data.hotspots) {
-        if (targetIds.has(place.locId)) continue;
+        if (targetIds.has(place.locId) || !recent(place)) continue;
         searchMarker(L.circleMarker([place.lat, place.lng], { radius: 4, color: '#87958d', weight: 1, fillOpacity: .45 }).bindTooltip(tooltip(place.locName)).on('click', event => { L.DomEvent.stopPropagation(event); onSelect(place); }), place).addTo(background);
       }
       for (const place of data.results) {
+        if (!recent(place)) continue;
         searchMarker(L.circleMarker([place.lat, place.lng], { radius: 6, color: '#fff', weight: 1.5, fillColor: '#226149', fillOpacity: .9 }).bindTooltip(tooltip(place.locName)).on('click', event => { L.DomEvent.stopPropagation(event); onSelect(place); }), place).addTo(targets);
       }
     },

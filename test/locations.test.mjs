@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { checklistUrl, filterLocations, sortLocations } from '../public/locations.js';
+import { checklistUrl, filterLocations, hasRecentActivity, sortLocations } from '../public/locations.js';
+
+test('map activity cutoff uses local calendar days and hides old, unknown, or invalid activity', () => {
+  const now = Date.parse('2026-11-22T02:00:00Z');
+  const zone = 'America/Los_Angeles';
+  assert.equal(hasRecentActivity({ latestObsDt: '2026-11-07 08:00' }, now, zone), true);
+  assert.equal(hasRecentActivity({ latestObsDt: '2026-11-06 23:59' }, now, zone), false);
+  assert.equal(hasRecentActivity({ latestObsDt: '2026-11-21' }, now, zone), true);
+  assert.equal(hasRecentActivity({ obsDt: '2026-11-20 08:00' }, now, zone), true);
+  assert.equal(hasRecentActivity({ latestObsDt: '2026-11-01', obsDt: '2026-11-20' }, now, zone), false);
+  for (const latestObsDt of [undefined, '', 'invalid', '2026-02-30', '2026-11-23']) {
+    assert.equal(hasRecentActivity({ latestObsDt }, now, zone), false);
+  }
+});
 
 test('recent species links use only valid returned checklist identifiers', () => {
   assert.equal(checklistUrl({ subId: 'S123456789' }), 'https://ebird.org/checklist/S123456789');

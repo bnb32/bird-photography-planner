@@ -2,6 +2,18 @@ export function activityDate(place) {
   return place.latestObsDt || place.obsDt || '';
 }
 
+export function hasRecentActivity(place, now = Date.now(), timeZone = 'UTC') {
+  const date = activityDate(place).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const observed = Date.parse(`${date}T00:00:00Z`);
+  if (!Number.isFinite(observed) || new Date(observed).toISOString().slice(0, 10) !== date) return false;
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(now));
+  const value = name => parts.find(part => part.type === name).value;
+  const today = Date.parse(`${value('year')}-${value('month')}-${value('day')}T00:00:00Z`);
+  const age = (today - observed) / 86400000;
+  return age >= 0 && age <= 14;
+}
+
 export function checklistUrl(report) {
   return /^S\d+$/.test(report.subId || '') ? `https://ebird.org/checklist/${report.subId}` : null;
 }
