@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { filterLocations, sortLocations } from '../public/locations.js';
+import { checklistUrl, filterLocations, sortLocations } from '../public/locations.js';
+
+test('recent species links use only valid returned checklist identifiers', () => {
+  assert.equal(checklistUrl({ subId: 'S123456789' }), 'https://ebird.org/checklist/S123456789');
+  assert.equal(checklistUrl({}), null);
+  assert.equal(checklistUrl({ subId: 'https://example.com' }), null);
+});
 
 test('hotspot text search matches case-insensitive words and restores all results when cleared', () => {
   const places = [

@@ -1,5 +1,5 @@
 import { createMap } from './map.js';
-import { activityDate, sortLocations } from './locations.js';
+import { activityDate, checklistUrl, sortLocations } from './locations.js';
 import { localDate, dayHours, lightForDay, sunPosition, nearestHour, formatTime, compass } from './light.js';
 
 const element = id => document.getElementById(id);
@@ -286,11 +286,11 @@ function renderResults() {
 }
 
 function selectPlace(place) {
-  state.selected = place; state.weather = null; state.date = null;
+  state.selected = place; state.weather = null;
   const version = ++state.selectionVersion;
   state.weatherController?.abort();
   try { state.zone = window.tzlookup(place.lat, place.lng); } catch { message('Could not determine the time zone at this point.'); return; }
-  state.date = localDate(Date.now(), state.zone);
+  state.date ??= localDate(Date.now(), state.zone);
   map.select(place);
   for (const button of element('results').querySelectorAll('.result-item')) {
     const active = button.dataset.placeKey === placeKey(place);
@@ -313,7 +313,12 @@ function selectPlace(place) {
     if (version !== state.selectionVersion) return;
     const others = birds;
     element('other-species').replaceChildren(...others.slice(0, 12).map(bird => {
-      const row = node('div', undefined, 'species-row');
+      const href = checklistUrl(bird);
+      const row = node(href ? 'a' : 'div', undefined, 'species-row');
+      if (href) {
+        row.href = href; row.target = '_blank'; row.rel = 'noopener noreferrer';
+        row.title = `Latest reported checklist including ${bird.comName}`;
+      }
       row.append(node('span', bird.comName), node('span', bird.obsDt.split(' ')[0]));
       return row;
     }));
@@ -329,7 +334,8 @@ function populateDates() {
     const today = localDate(Date.now(), state.zone);
     dates = Array.from({ length: 7 }, (_, index) => new Date(Date.parse(`${today}T12:00:00Z`) + index * 86400000).toISOString().slice(0, 10));
   }
-  if (!dates.includes(state.date)) state.date = dates[0];
+  if (!state.date) state.date = dates[0];
+  if (!dates.includes(state.date)) dates = [...dates, state.date].sort();
   element('date').replaceChildren(...dates.map(date => {
     const option = node('option', new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`)));
     option.value = date; return option;

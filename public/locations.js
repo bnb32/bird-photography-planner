@@ -2,6 +2,10 @@ export function activityDate(place) {
   return place.latestObsDt || place.obsDt || '';
 }
 
+export function checklistUrl(report) {
+  return /^S\d+$/.test(report.subId || '') ? `https://ebird.org/checklist/${report.subId}` : null;
+}
+
 export function filterLocations(places, query = '') {
   const normalize = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const terms = normalize(query).trim().split(/\s+/).filter(Boolean);

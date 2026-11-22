@@ -7,7 +7,7 @@ A standalone, local bird photography planner. Explore nearby eBird hotspots with
 Requires Node.js 22.11 or newer and internet access for sightings, forecasts and map tiles.
 
 ```powershell
-cd C:\Users\bbent\repos\bird-photography-planner
+cd path\to\bird-photography-planner
 npm install
 npm start
 ```
@@ -16,7 +16,7 @@ Open the localhost URL printed by the server (normally http://127.0.0.1:3210). I
 
 For Git Bash or another Bash shell, run `bash launch.sh` from this folder, or pass its full path from any directory. The script changes to the project directory before loading the local environment and starting Node.
 
-For a fresh installation, create `.env` from `.env.example` and fill in `EBIRD_API_KEY`. With no valid key, map-point weather and light still work.
+Before the first launch, copy `.env.example` to `.env` and set `EBIRD_API_KEY` to a key obtained from https://ebird.org/api/keygen. Restart the server after changing the key. Keep `.env` private and excluded from version control. With no valid key, map-point weather and light still work, but hotspot and bird-report queries are unavailable.
 
 Open this folder directly in VS Code for the standalone workspace. A `Run Fieldlight` task is provided; it runs `npm start` without a debugger. No extensions or build step are required.
 
@@ -25,10 +25,11 @@ Open this folder directly in VS Code for the standalone workspace. A `Run Fieldl
 - Start with a location or a species. Leave **Target bird** empty to browse nearby hotspots, or choose a bird from the suggestions to find its recent reports. The clear icon removes the target and searches nearby hotspots. The initial map area is Seattle; the last searched target (including no target) is remembered.
 - Click an empty spot on the map to set the search center and select that coordinate for weather and light. Searching for a US/Canadian town or using the location button also sets the center. Panning does not change the chosen center or trigger eBird requests. Set a 1-250 km radius and a 3/7/14/30-day report window, then select **Search this area**. The dashed circle identifies the last completed search area; the center marker identifies the chosen center.
 - Select a result to see that hotspot's recent species, weather and light. Target searches also show the matching bird's report; location-first searches do not imply a target sighting. Enable **Other hotspots** during a target search to explore nearby sites without target reports. Click the map to select any coordinate independently of hotspot membership.
+- Double-click a map point or hotspot to set the search center and run **Search this area**. Searches update results without replacing the selected point. Click a recent species to open the latest checklist returned for it at that hotspot in a new tab; entries without a checklist identifier remain plain text.
 - The location list defaults to **Recently active**, using the hotspot's latest observation date with nearest distance as a tie-breaker. This measures recency, not checklist frequency or bird abundance. Missing dates sort last. **Target recency** sorts by the selected bird's report date; **Nearest** sorts by distance.
 - Type at least two characters in **Hotspot name (US / Canada)** to search hotspot names across both countries, independently of radius and target species. Multiple words can match anywhere in a name, regardless of case. The first lookup downloads both country inventories; subsequent queries reuse them for up to 24 hours in server memory. Up to 100 matches are displayed; refine broad names to narrow them. Selecting a match moves the map and search center there and loads its conditions. Double-click a match or use **Search this area** to search around it with the current radius and bird filter. Name matches are separate from nearby target reports and do not imply a target sighting.
-- Select a hotspot and use the star beside the bookmark to give it personal priority. Priority hotspots appear first under every sort, retaining the chosen ordering within the priority and non-priority groups. Use the star again to remove priority. Priorities are stored locally, independently of saved places, and only promote locations returned by the current search; they do not bypass radius or species filters.
-- Choose a date and hour, or use the sunrise/sunset buttons to jump near low-sun periods. Map rays point toward the sun. Weather values correspond to the selected hour; direction is wind **from** that bearing. Use the units selector for Fahrenheit/mph or Celsius/km/h.
+- Use a hotspot's star in either results list, or the star beside the bookmark in its details panel, to give it personal priority. Clicking a list star does not select the location or start a search. Priority hotspots appear first in the nearby list under every sort, retaining the chosen ordering within the priority and non-priority groups. Use the star again to remove priority. Priorities are stored locally, independently of saved places, and only promote locations returned by the current area search; they do not bypass radius or species filters. Country-wide name matches remain alphabetical.
+- Choose a date and hour, or use the sunrise/sunset buttons to jump near low-sun periods. The chosen calendar date stays selected when changing locations, including across time zones. Dates outside a location's forecast remain available for light calculation, with weather shown as unavailable. Map rays point toward the sun. Weather values correspond to the selected hour; direction is wind **from** that bearing. Use the units selector for Fahrenheit/mph or Celsius/km/h.
 - Save places with the bookmark button and add access notes. The header bookmark opens saved places. Preferences, notes and favourites are stored only in this browser's localStorage. Clearing browser storage removes them.
 - Drag the column dividers to resize the location list or location info column; the map takes the remaining width. Drag the handle below the map to change its height. Focus a handle and use arrow keys for 10-pixel adjustments (Shift for 50); double-click to restore its default size. Sizes are remembered locally. Column handles are hidden when their panels stack on smaller screens; map-height resizing remains available.
 
@@ -43,7 +44,7 @@ Open this folder directly in VS Code for the standalone workspace. A `Run Fieldl
 
 ## Architecture and security
 
-Plain browser modules, Leaflet, Lucide, SunCalc, Temporal and tz-lookup; no framework or bundler. The Node server uses native HTTP/fetch, validated provider routes, 20-second provider timeouts, short-lived in-memory caching and request deduplication. Taxonomy is cached for 24 hours, other provider data for 10 minutes; refresh clears the provider cache. Failed weather refreshes preserve the current forecast and show a warning. Superseded browser requests cannot overwrite newer selected-place conditions.
+Plain browser modules, Leaflet, Lucide, SunCalc, Temporal and tz-lookup; no framework or bundler. The Node server uses native HTTP/fetch, validated provider routes, 20-second provider timeouts, in-memory caching and request deduplication. Taxonomy and country-wide hotspot inventories are cached for up to 24 hours, other provider data for 10 minutes; refresh clears the provider cache. Failed weather refreshes preserve the current forecast and show a warning. Superseded browser requests cannot overwrite newer selected-place conditions.
 
 The server binds only to `127.0.0.1`, rejects foreign Host/Origin headers, serves an explicit public/vendor file allowlist, and uses the eBird key only in outbound request headers. This is a local-only tool, not a hardened public service; do not expose its port through a tunnel or deploy it publicly without additional security work. `.env` must remain private. API errors never return upstream bodies or credentials.
 
@@ -56,7 +57,7 @@ npm test
 npm run smoke
 ```
 
-Unit and local HTTP tests use fixtures, require no credentials, and cover query bounds, exact hotspot matching, latest-report selection, missing counts, auth failure, cache deduplication/expiry, local-only serving, time zones, DST, polar night and compass conventions. The optional live smoke check uses the local key and prints only response counts/field names and forecast zones, never credentials. It makes five real provider requests.
+Unit and local HTTP tests use fixtures, require no credentials, and cover query bounds, wider-area coverage, exact hotspot matching, latest-report selection, missing counts, auth failure, cache deduplication/expiry, local-only serving, time zones, DST, polar night, compass conventions, priorities, hotspot-name matching, checklist URLs and selected-date/point preservation. The optional live smoke check uses the local key and prints only response counts/field names and forecast zones, never credentials. It contacts real providers and is subject to their availability and rate limits.
 
 ## Sources
 
