@@ -122,9 +122,12 @@ export function createProviders({ fetcher = fetch, key = process.env.EBIRD_API_K
       }
       if (path === '/api/hotspots') {
         const query = (params.get('q') || '').trim();
-        if (query.length < 2 || query.length > 100) throw new ApiError(400, 'Enter a hotspot name between 2 and 100 characters.');
+        const ids = params.get('ids')?.split(',');
+        if (ids && (ids.length > 500 || ids.some(id => !/^L\d{1,12}$/.test(id)))) throw new ApiError(400, 'Invalid hotspot identifiers.');
+        if (!ids && (query.length < 2 || query.length > 100)) throw new ApiError(400, 'Enter a hotspot name between 2 and 100 characters.');
         const countries = await Promise.all(['US', 'CA'].map(country => json(`https://api.ebird.org/v2/ref/hotspot/${country}?fmt=json`, true, 86400000)));
         const unique = new Map(countries.flat().filter(place => ['US', 'CA'].includes(place.countryCode)).map(place => [place.locId, place]));
+        if (ids) return { results: ids.map(id => unique.get(id)).filter(Boolean) };
         const matches = filterLocations([...unique.values()], query).sort((first, second) => first.locName.localeCompare(second.locName));
         return { results: matches.slice(0, 100), total: matches.length };
       }

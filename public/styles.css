@@ -72,6 +72,9 @@ body.resizing { user-select: none; }
 .result-item { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 14px 16px; background: transparent; min-height: 90px; }
 .result-item.active { background: var(--green-light); box-shadow: inset 3px 0 var(--green); }
 .result-row { position: relative; }
+.location-tabs { display: flex; gap: 4px; padding: 0 16px 12px; }
+.location-tabs button { flex: 1; }
+.location-tabs [aria-selected=true] { background: var(--green-light); color: var(--green); border-color: var(--green); }
 .result-row > .result-item { padding-right: 48px; }
 .result-row > .list-priority { position: absolute; top: 9px; right: 7px; border: 0; background: transparent; }
 .list-priority.prioritized { color: var(--sun); }

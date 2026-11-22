@@ -15,6 +15,7 @@ const state = {
   zone: 'America/Los_Angeles', date: null, selectionVersion: 0, searchVersion: 0,
   saved: load('fieldlight.saved', []), notes: load('fieldlight.notes', {}), weatherController: null,
   priorities: load('fieldlight.priorities', []),
+  priorityPlaces: load('fieldlight.priorityPlaces', {}), locationView: 'nearby',
   searchController: null, units: preferences.units || 'imperial'
 };
 
@@ -68,14 +69,21 @@ function updatePriorityButton() {
   priorityButton.setAttribute('aria-label', priorityButton.title);
   priorityButton.classList.toggle('prioritized', prioritized);
 }
-function togglePriority(id) {
+function rememberPriority(place) {
+  if (!place?.locId || !state.priorities.includes(place.locId)) return;
+  const { locId, locName, lat, lng, countryCode, subnational1Code, latestObsDt } = place;
+  state.priorityPlaces[locId] = { locId, locName, lat, lng, countryCode, subnational1Code, latestObsDt };
+  store('fieldlight.priorityPlaces', state.priorityPlaces);
+}
+function togglePriority(id, place) {
   if (!id) return;
   state.priorities = state.priorities.includes(id) ? state.priorities.filter(priority => priority !== id) : [...state.priorities, id];
   store('fieldlight.priorities', state.priorities);
+  rememberPriority(place);
   updatePriorityButton(); renderResults();
   for (const button of element('hotspot-name-results').querySelectorAll('.list-priority')) updateListPriority(button);
 }
-priorityButton.addEventListener('click', () => togglePriority(state.selected?.locId));
+priorityButton.addEventListener('click', () => togglePriority(state.selected?.locId, state.selected));
 function updateListPriority(button) {
   const prioritized = state.priorities.includes(button.dataset.hotspotId);
   button.classList.toggle('prioritized', prioritized);
@@ -89,7 +97,7 @@ function priorityRow(place, locationButton) {
   star.type = 'button'; star.classList.add('list-priority');
   star.dataset.hotspotId = place.locId; star.dataset.hotspotName = place.locName;
   updateListPriority(star);
-  star.addEventListener('click', event => { event.stopPropagation(); togglePriority(place.locId); });
+  star.addEventListener('click', event => { event.stopPropagation(); togglePriority(place.locId, place); });
   star.addEventListener('dblclick', event => event.stopPropagation());
   row.append(locationButton, star);
   return row;
@@ -209,6 +217,7 @@ async function search() {
     text('results-message', data.results.length ? '' : bird ? 'No matching recent hotspot reports in this area.' : 'No hotspots returned in this area.');
     element('results-message').hidden = data.results.length > 0;
     renderResults();
+    if (state.locationView === 'preferred') element('results-message').hidden = true;
     if (data.truncated) message('An eBird query area reached its 1,000-record limit; results may be incomplete. Try a smaller radius or shorter lookback.');
   } catch (error) {
     if (version !== state.searchVersion || error.name === 'AbortError') return;
@@ -218,6 +227,36 @@ async function search() {
 }
 element('search').addEventListener('click', search);
 element('sort').addEventListener('change', renderResults);
+let recoveringPriorities = false;
+async function showLocationView(view) {
+  state.locationView = view;
+  for (const name of ['nearby', 'preferred']) element(`${name}-tab`).setAttribute('aria-selected', String(name === view));
+  element('search-summary').hidden = view === 'preferred';
+  element('results-message').hidden = view === 'preferred' || Boolean(state.results.length);
+  renderResults();
+  if (view !== 'preferred' || recoveringPriorities) return;
+  const missing = state.priorities.filter(id => !state.priorityPlaces[id]?.locName);
+  if (!missing.length) return;
+  recoveringPriorities = true;
+  text('preferred-status', 'Loading details for previously preferred hotspots...');
+  try {
+    for (let offset = 0; offset < missing.length; offset += 500) {
+      const data = await api('/api/hotspots', { ids: missing.slice(offset, offset + 500).join(',') });
+      data.results.forEach(rememberPriority);
+    }
+    if (state.locationView === 'preferred') renderResults();
+  } catch (error) {
+    if (state.locationView === 'preferred') text('preferred-status', `Some hotspot details are unavailable. ${error.message}`);
+  } finally { recoveringPriorities = false; }
+}
+for (const view of ['nearby', 'preferred']) {
+  element(`${view}-tab`).addEventListener('click', () => showLocationView(view));
+  element(`${view}-tab`).addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault(); const next = view === 'nearby' ? 'preferred' : 'nearby';
+    element(`${next}-tab`).focus(); showLocationView(next);
+  });
+}
 let hotspotTimer;
 let hotspotVersion = 0;
 let hotspotController;
@@ -266,7 +305,13 @@ element('locate').addEventListener('click', () => {
 });
 
 function renderResults() {
-  const results = sortLocations(state.results, element('sort').value, state.priorities);
+  state.results.forEach(rememberPriority);
+  const preferred = state.locationView === 'preferred';
+  const source = preferred ? state.priorities.map(id => state.priorityPlaces[id] || { locId: id, locName: `Hotspot ${id}`, unresolved: true }) : state.results;
+  const mode = preferred && element('sort').value === 'recent' ? 'activity' : element('sort').value;
+  const results = sortLocations(source.map(place => preferred ? { ...place, distanceKm: Number.isFinite(place.lat) && Number.isFinite(place.lng) ? distanceFromCenter(place) : Infinity } : place), mode, state.priorities);
+  element('preferred-status').hidden = !preferred;
+  if (preferred) text('preferred-status', !results.length ? 'No preferred hotspots yet. Star a hotspot in either search list.' : results.some(place => place.unresolved) ? 'Some hotspot details are unavailable; you can still remove their stars.' : `${results.length} preferred hotspots · all locations`);
   text('result-count', String(results.length));
   element('results').replaceChildren(...results.map(place => {
     const active = state.selected && placeKey(place) === placeKey(state.selected);
@@ -275,14 +320,24 @@ function renderResults() {
     button.setAttribute('aria-pressed', String(Boolean(active)));
     button.append(node('span', place.locName, 'result-name'), node('span', place.obsDt ? `Reported ${place.obsDt} local` : activityDate(place) ? `Last active ${activityDate(place)} local` : 'Activity date unavailable', 'result-date'));
     const bottom = node('span', undefined, 'result-bottom');
-    bottom.append(node('span', place.obsDt ? place.howMany == null ? 'Count not reported' : `${place.howMany} reported` : place.countryCode, 'bird-count'), node('span', `${place.distanceKm.toFixed(1)} km`));
+    bottom.append(node('span', place.obsDt ? place.howMany == null ? 'Count not reported' : `${place.howMany} reported` : place.subnational1Code || place.countryCode, 'bird-count'), node('span', Number.isFinite(place.distanceKm) ? `${place.distanceKm.toFixed(1)} km` : 'Details unavailable'));
+    button.disabled = Boolean(place.unresolved);
     button.append(bottom); button.addEventListener('click', () => {
+      if (preferred) { map.center(place); updateCenter({ lat: place.lat, lng: place.lng }); }
       if (!state.selected || placeKey(state.selected) !== placeKey(place)) selectPlace(place);
     });
     button.addEventListener('dblclick', () => searchPlace(place));
     return priorityRow(place, button);
   }));
   icons();
+}
+
+function distanceFromCenter(place) {
+  const radians = degrees => degrees * Math.PI / 180;
+  const latitudeDelta = radians(place.lat - state.center.lat);
+  const longitudeDelta = radians(place.lng - state.center.lng);
+  const value = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(radians(state.center.lat)) * Math.cos(radians(place.lat)) * Math.sin(longitudeDelta / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, value)));
 }
 
 function selectPlace(place) {

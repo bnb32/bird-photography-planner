@@ -18,4 +18,8 @@ test('nationwide hotspot lookup ignores radius/species, searches both countries,
   assert.equal(second.results[0].locId, 'L2');
   assert.equal(calls.length, 2);
   await assert.rejects(provider.route('/api/hotspots', new URLSearchParams('q=a')), /between 2 and 100/);
+  const recovered = await provider.route('/api/hotspots', new URLSearchParams('ids=L2,L999'));
+  assert.deepEqual(recovered.results.map(place => place.locId), ['L2']);
+  assert.equal(calls.length, 2);
+  await assert.rejects(provider.route('/api/hotspots', new URLSearchParams('ids=bad')), /Invalid hotspot/);
 });

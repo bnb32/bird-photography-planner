@@ -40,6 +40,8 @@
   <main class="workspace">
     <aside class="locations" aria-label="Candidate locations">
       <div class="section-heading"><h2>Locations <span id="result-count" class="count">0</span></h2><select id="sort" aria-label="Sort locations"><option value="activity">Recently active</option><option value="recent">Target recency</option><option value="distance">Nearest</option></select></div>
+      <div class="location-tabs" role="tablist" aria-label="Location lists"><button id="nearby-tab" role="tab" aria-selected="true" aria-controls="results">Nearby</button><button id="preferred-tab" role="tab" aria-selected="false" aria-controls="results">Preferred</button></div>
+      <div id="preferred-status" class="empty-message" role="status" hidden></div>
       <div id="search-summary" class="search-summary">No search yet</div>
       <div class="hotspot-search"><label for="hotspot-query">Hotspot name (US / Canada)</label><div class="input-action"><input id="hotspot-query" type="search" maxlength="100" placeholder="Search hotspot names" autocomplete="off"><button id="clear-hotspot-query" type="button" class="icon-button" title="Clear hotspot search" aria-label="Clear hotspot search"><i data-lucide="x"></i></button></div><div id="hotspot-match-status" class="muted" role="status" hidden></div><div id="hotspot-name-results" class="hotspot-name-results"></div></div>
       <div id="results-message" class="empty-message" role="status">Loading species list...</div>
